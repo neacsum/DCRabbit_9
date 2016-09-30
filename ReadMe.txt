@@ -308,3 +308,18 @@ Note that a typical embedded application does not terminate in normal operation.
 
 14) Sample program Samples\RCM3300\Module_Integration\integration.c does not run
 properly when run with Down Load Manager support.
+
+15) The command-line compiler will not emit warnings and errors when compiling
+to a binary file.  The workaround is to compile to an attached target using
+the "-n" command-line option for a "Null compile/syntax check without running".
+If the compiler does not emit any errors, re-compile with one of the binary
+output options (-b, -br).
+
+16) On the BL2600 SBCs, there is some overlap of calibration constants stored
+in the UserBlock.  If you need to access both:
+    single-ended unipolar channels 2 to 7 with gaincode 7 and
+    single-ended  bipolar channels 0 to 5 with gaincode 0
+you will need to define macro BL26XX_CAL_ADC_OVERLAP_FIX in your programs and
+re-calibrate the affected unipolar channels with gaincode 7 and ALL of the
+bipolar channels with all gaincodes.
+
