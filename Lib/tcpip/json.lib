@@ -29,8 +29,8 @@ typedef struct jsonvar_t {
 #define JT_PSTR   5
 #define JT_STR    6
 
-#define JSD_STARTDIC const JSONVAR json_dict[] ={
-#define JSD_ENDDIC { (char*)0,   (void*)0,           0,        0} }
+#define JSD_START const JSONVAR json_dict[] ={
+#define JSD_END { (char*)0,   (void*)0,           0,        0} }
 
 /* START FUNCTION DESCRIPTION ********************************************
 JSD                                                      <json.lib>
@@ -391,15 +391,15 @@ int readpost (HttpState *state)
   return len;
 }
 
-/*** BeginHeader process_url_post, parse_urlencoded*/
-int process_url_post (HttpState *state);
-int parse_urlencoded (HttpState *state);
+/*** BeginHeader url_post, url_parse*/
+int url_post (HttpState *state);
+int url_parse (HttpState *state);
 unsigned long atoul (char *str);
 
 /*** EndHeader */
 
 /* START FUNCTION DESCRIPTION ************************************************
-process_url_post                                       <json.lib>
+url_post                                       <json.lib>
 
   Description:  Read and parse an URL-encoded POST response. Keywords in the POST
                 response are parsed in variables based on JSON data dictionary.
@@ -427,13 +427,13 @@ process_url_post                                       <json.lib>
 
 END DESCRIPTION *************************************************************/
 json_debug
-int process_url_post (HttpState *state)
+int url_post (HttpState *state)
 {
   int len;
 
   if ((len = readpost (state)) <= 0)
     return len;   //wait for more data or die
-  return parse_urlencoded (state);
+  return url_parse (state);
 }
 
 json_debug
@@ -465,7 +465,7 @@ const JSONVAR* json_find (char *name, int *idx)
 }
 
 /* START FUNCTION DESCRIPTION ************************************************
-parse_urlencoded                                         <json.lib>
+url_parse                                         <json.lib>
   Description:  Parse an URL-encoded POST response. Keywords in the POST
                 response are parsed corresponding variables from JSON dictionary.
 
@@ -477,7 +477,7 @@ parse_urlencoded                                         <json.lib>
   Return:       number of fields parsed.
 END DESCRIPTION *************************************************************/
 json_debug
-int parse_urlencoded (HttpState *state)
+int url_parse (HttpState *state)
 {
   char *ptr;
   char *pd;
