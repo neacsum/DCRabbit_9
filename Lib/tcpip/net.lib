@@ -2076,36 +2076,6 @@ _system int _rs_sock_tbleft( void *s )
    	return 0;
 }
 
-/*** BeginHeader */
-#define MY_IP		      "MY_IP_ADDRESS"
-#define IP              "IP"
-#define NETMASK 	      "MY_NETMASK"
-#define COOKIE		      "COOKIE"
-#define NAMESERVER	   "MY_NAMESERVER"
-#define GATEWAY 	      "MY_GATEWAY"
-#define DOMAINS		   "DOMAINSLIST"
-#define HOSTNAME	      "HOSTNAME"
-#define SOCKDELAY       "SOCKDELAY"
-#define ETHIP		      "ETHIP"
-#define BOOTP		      "BOOTP"
-#define BOOTPTO		   "BOOTPTO"
-#define PRINT		      "PRINT"
-#define INACTIVE        "INACTIVE"
-#define INCLUDE         "INCLUDE"
-#define MULTIHOMES      "MULTIHOMES"
-#define DATATIMEOUT     "DATATIMEOUT"
-
-#define is_it( x ) if (!strcmp(name,x))
-/*** EndHeader */
-
-/*** BeginHeader set_my_ip */
-void set_my_ip(char *value);
-/*** EndHeader */
-void set_my_ip(char *value)
-{
-	my_ip_addr = aton( value );
-}
-
 /*** BeginHeader ethip */
 void ethip( char *s );
 /*** EndHeader */
@@ -2152,81 +2122,6 @@ _net_nodebug word if_max_mtu(int iface)
 	else if (IF_USES_ETH(iface))
 		return ETH_BUFSIZE - ETH_OVERHEAD;
 	return ETH_BUFSIZE - PPPOE_OVERHEAD;
-}
-
-/*** BeginHeader _rs_tcp_config */
-_system void _rs_tcp_config(char *name, char *value);
-/*** EndHeader */
-
-/* START FUNCTION DESCRIPTION ********************************************
-tcp_config                               <NET.LIB>
-
-SYNTAX: void tcp_config(char *name, char *value);
-
-KEYWORDS:		tcpip, socket
-
-DESCRIPTION: 	tcp_config is used to set TCP/IP stack parameters at runtime
-					The possible parameters are
-					MY_IP - host IP address (use sethostid() instead)
-					NETMASK
-					GATEWAY - name/address of gateway
-					NAMESERVER - adds a nameserver's address
-					DOMAINS - name of default domain
-						(use setdomainname() instead)
-
-					Note that there are specific (and safer) functions for
-					modifying some of the common parameters.
-
-					This function is deprecated.  It is highly recommended that
-					you do NOT use it, since it uses strings (which take up
-					lots of root data storage).
-
-					The recommended replacement function is ifconfig().
-
-PARAMETER1: 	name - string name of the parameter above to modify
-PARAMETER2: 	value - new value for parameter(in string form)
-
-RETURN VALUE:  None
-
-SEE ALSO:      sock_init, ifconfig
-
-END DESCRIPTION **********************************************************/
-
-_net_nodebug
-_system void _rs_tcp_config(char *name, char *value )
-{
-	_SYS_CALL_VARS
-   is_it( MY_IP ) {
-		if ( toupper( *value ) != 'B' &&
-	   	  toupper( *value ) != 'D')
-			my_ip_addr = aton( value );
-   } else is_it( IP ) {
-		if ( toupper( *value ) != 'B' &&
-	     	  toupper( *value ) != 'D')
-			my_ip_addr = aton( value );
-   }
-   else is_it( NETMASK )
-    	sin_mask = aton( value );
-   else is_it( GATEWAY ) {
-		/* accept gateip[,subnet[,mask]]  */
-		_arp_add_gateway( value , 0L );
-	}
-#ifndef DISABLE_DNS
-   else is_it( NAMESERVER )
-   	servlist_add(&_dns_server_table, aton(value), DNS_PREDEFINED, NULL);
-#endif
-   else is_it( COOKIE )
-   	_add_server( &_last_cookie, MAX_COOKIES, _cookie, aton( value ));
-   else is_it( HOSTNAME )
-   	strncpy(_hostname, value, MAX_STRING );
-   else is_it( SOCKDELAY )
-   	sock_delay = atoi( value );
-   else is_it( ETHIP )
-   	ethip( value );
-   else is_it( INACTIVE )
-   	sock_inactive = atoi( value );
-   else is_it( DATATIMEOUT)
-   	sock_data_timeout = atoi( value )*1000uL;
 }
 
 /*** BeginHeader ifctl_tick */
