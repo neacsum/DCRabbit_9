@@ -2400,13 +2400,17 @@ void http_genHeader(HttpState* state, char * buf, int buflen,
    //  2: caller will add headers, but call custom headers function (if defined) in here.
 	auto char * msg;
 	auto char datestr[30];
+	auto int offset;
 
 #ifdef HTTP_VERBOSE
 	printf("HTTP: sending %d for %s, realm %s\n", code, state->url, state->realm);
 #endif
 
+	offset = 0;
+
    switch (code) {
    	default: msg = "OK"; code = 200; break;
+   	  case 204:	msg = "No Content";				break;
       case 302: msg = "Found"; break;		// state->p has next URL
       case 401: msg = "Unauthorized"; break;
       case 403: msg = "Forbidden"; break;
@@ -2417,24 +2421,33 @@ void http_genHeader(HttpState* state, char * buf, int buflen,
    	content_type = "text/html";
    if (state->version != HTTP_VER_09) {
    	// 1.0 or 1.1: generate headers
-      sprintf(buf,
+      offset += sprintf(buf + offset,
       	"HTTP/1.%c %d %s\r\n" \
-         "Date: %s\r\n" \
-         "Server: Z-World Rabbit\r\n" \
-         "Connection: close\r\n" \
-         "Content-Type: %s\r\n" \
-         "%s%s%s" \
-         "%s"
+         "Date: %ls\r\n" \
+         "Server: Rabbit/%u.%02u\r\n" \
+         "Connection: close\r\n"
         , state->version == HTTP_VER_11 ? '1' : '0'
         , code
         , msg
         , http_date_str(datestr)
-        , content_type
-        , code == 302 ? "Location: " : ""
-        , code == 302 ? state->p : ""
-        , code == 302 ? "\r\n" : ""
-        , more_hdrs ? "" : "\r\n"
+        , CC_VER >> 8, CC_VER & 0x00FF
         );
+      if (code == 302)
+      {
+      	// Add "Location:" header for "302 Found" response
+			offset += sprintf(buf + offset, "Location: %ls\r\n", state->p);
+      }
+      if (code != 204)
+      {
+			// "204 No Content" response shouldn't include a Content-Type
+      	offset += sprintf(buf + offset, "Content-Type: %ls\r\n", content_type);
+      }
+      if (! more_hdrs)
+      {
+      	// end headers with a blank line
+			offset += sprintf(buf + offset, "\r\n");
+      }
+
 #ifdef HTTP_CUSTOM_HEADERS
 	   if (more_hdrs == 2)
 	         HTTP_CUSTOM_HEADERS(state, buf + strlen(buf),
@@ -6250,6 +6263,64 @@ _http_nodebug void cgi_redirectto(HttpState* state, char* url)
 	state->nextstate = CGI_STATE_TXT1;
 	state->state=HTTP_SENDPAGE;
 	state->abort_notify = 0;
+}
+
+/*** BeginHeader cgi_nocontent */
+int cgi_nocontent(HttpState* state);
+/*** EndHeader */
+_http_nodebug
+int cgi_nocontent_handler(HttpState* state)
+{
+	if (state->nextstate)
+	{
+      http_genHeader(state, state->buffer, sizeof(state->buffer),
+        204, NULL, 0, NULL);
+      state->nextstate = 0;
+	   /* queue a write */
+	   state->headeroff = 0;
+	   state->headerlen = strlen(state->buffer);
+	   return 0;
+	}
+	else
+	{
+		return 1;
+	}
+}
+
+/* START FUNCTION DESCRIPTION ********************************************
+cgi_nocontent                   <HTTP.LIB>
+
+SYNTAX: int cgi_nocontent(HttpState* state);
+
+KEYWORDS:		tcpip, http
+
+DESCRIPTION:	Utility function that may be called in a CGI
+		function, to send a "204 No Content" response so the
+		web browser doesn't refresh the page.  Useful for initiating
+		an action on the Rabbit, but not modifying the web page in
+		the browser.
+
+		Since this function sets the CGI state, any CGI function calling
+		it should simply end with:
+
+			return cgi_nocontent(state);
+
+PARAMETER1:	Current server struct, as received by the CGI function.
+
+RETURN VALUE:	0
+
+SEE ALSO:	cgi_sendstring, cgi_redirectto
+
+END DESCRIPTION **********************************************************/
+_http_nodebug
+int cgi_nocontent(HttpState* state)
+{
+	state->handler=cgi_nocontent_handler;
+	state->nextstate = 1;
+	state->state=HTTP_SENDPAGE;
+	state->abort_notify = 0;
+
+	return 0;
 }
 
 /*** BeginHeader cgi_sendstring */

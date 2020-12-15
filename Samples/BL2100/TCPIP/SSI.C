@@ -17,34 +17,34 @@
 
         Samples\BL2100\TCPIP\ssi.c
 
-        A basic contoller. This creates four 'devices' (lights), and four 
+        A basic contoller. This creates four 'devices' (lights), and four
         buttons to toggle them. Users can browse to the device, and change
         the status of the lights. The lights (LED0 - LED1) on the LCD display
         and/or the DEMO board will match the ones on the web page. (Use the
         DEMO boards for the LEDS if you don't have the LCD module)
-        
+
         DEMO Board setup
         ----------------
         1. DEMO board jumper settings:
-           - H1 remove all jumpers 
-           - H2 jumper pins 3-5  
-             jumper pins 4-6             	
+           - H1 remove all jumpers
+           - H2 jumper pins 3-5
+             jumper pins 4-6
 
         2. Connect a wire from the controller J4 GND, to the DEMO board
            J1 GND.
 
         3. Connect the following wires from the controller J7 to the DEMO
            board J1:
-	   
+
            From OUT00 to LED1
            From OUT01 to LED2
            From OUT02 to LED3
-           From OUT03 to LED4    
+           From OUT03 to LED4
 
         4. Connect a wire on the controller from J4 +RAW to J7 +K1 and +K2.
 
         5. Connect a wire from the controller J7 +K2 to the DEMO board J1 +K.
-           
+
         Program Instructions
         --------------------
         1. Compile and run this program.
@@ -54,7 +54,7 @@
            when changing them via the WEB page control button.
 
         This program is based on the "samples/tcpip/ssi.c" program.
-        
+
 *******************************************************************************/
 #class auto
 
@@ -130,7 +130,7 @@
  *  REDIRECTTO is used by each ledxtoggle cgi's to tell the
  *  browser which page to hit next.  The default REDIRECTTO
  *  assumes that you are serving a page that does not have
- *  any address translation applied to it.  
+ *  any address translation applied to it.
  *
  */
 
@@ -156,7 +156,7 @@
 #ximport "samples/bl2100/tcpip/ssi.c"                 ssi_c
 
 /*
- *  In this case the .html is not the first type in the 
+ *  In this case the .html is not the first type in the
  *  type table.  This causes the default (no extension)
  *  to assume the shtml_handler.
  *
@@ -174,7 +174,7 @@ const HttpType http_types[] =
 /*
  *  Each ledx contains a text string that is either
  *  "ledon.gif" or "ledoff.gif"  This string is toggled
- *  each time the ledxtoggle.cgi is requested from the 
+ *  each time the ledxtoggle.cgi is requested from the
  *  browser.
  *
  */
@@ -200,7 +200,7 @@ int led_toggle0(HttpState* state)
       strcpy(led_LED0,"ledon.gif");
 
    cgi_redirectto(state,REDIRECTTO);
-   return 0;      
+   return 0;
 }
 
 int led_toggle1(HttpState* state)
@@ -211,7 +211,7 @@ int led_toggle1(HttpState* state)
       strcpy(led_LED1,"ledon.gif");
 
    cgi_redirectto(state,REDIRECTTO);
-   return 0;      
+   return 0;
 }
 
 int led_toggle2(HttpState* state)
@@ -222,7 +222,7 @@ int led_toggle2(HttpState* state)
       strcpy(led_LED2,"ledon.gif");
 
    cgi_redirectto(state,REDIRECTTO);
-   return 0;      
+   return 0;
 }
 
 int led_toggle3(HttpState* state)
@@ -233,11 +233,11 @@ int led_toggle3(HttpState* state)
       strcpy(led_LED3,"ledon.gif");
 
    cgi_redirectto(state,REDIRECTTO);
-   return 0;      
+   return 0;
 }
 
 
-const HttpSpec http_flashspec[] = 
+const HttpSpec http_flashspec[] =
 {
    { HTTPSPEC_FILE,  "/",              index_html,    NULL, 0, NULL, NULL},
    { HTTPSPEC_FILE,  "/index.shtml",   index_html,    NULL, 0, NULL, NULL},
@@ -269,7 +269,7 @@ void update_leds()
    ptr[1] = led_LED1;
    ptr[2] = led_LED2;
    ptr[3] = led_LED3;
- 
+
    for(i=0; i< (sizeof(ptr)/2); i++)
    {
        if(strcmp(ptr[i],"ledon.gif") == 0)
@@ -291,13 +291,14 @@ main()
    brdInit();	// Initialize the controller
 
    // Configure high-current outputs, make them all sinking type outputs
-   digOutConfig(0x0000); 
+   digOutConfig(0x0000);
 
    sock_init();
    http_init();
    tcp_reserveport(80);
+  ip_print_ifs ();
 
-   // set the initial state of the LED's 
+   // set the initial state of the LED's
    strcpy(led_LED0,"ledon.gif");  ledOut(LED0, ON); digOut(0, 0);
    strcpy(led_LED1,"ledon.gif");  ledOut(LED1, ON); digOut(1, 0);
    strcpy(led_LED2,"ledon.gif");  ledOut(LED2, ON); digOut(2, 0);
