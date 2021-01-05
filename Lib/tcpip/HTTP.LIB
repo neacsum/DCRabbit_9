@@ -2386,13 +2386,11 @@ _http_nodebug void http_setcookie(char *buf, char *value)
 
 
 /*** BeginHeader http_genHeader */
-void http_genHeader(HttpState* state, char * buf, int buflen,
-			int code, char * content_type, int more_hdrs, char * content);
+void http_genHeader(HttpState* state, int code, char * content_type, int more_hdrs, char * content);
 /*** EndHeader */
 
 _http_nodebug
-void http_genHeader(HttpState* state, char * buf, int buflen,
-			int code, char * content_type, int more_hdrs, char * content)
+void http_genHeader(HttpState* state, int code, char * content_type, int more_hdrs, char * content)
 {
 	// more_hdrs may be:
    //  0: no more headers
@@ -2400,13 +2398,16 @@ void http_genHeader(HttpState* state, char * buf, int buflen,
    //  2: caller will add headers, but call custom headers function (if defined) in here.
 	auto char * msg;
 	auto char datestr[30];
-	auto int offset;
+  auto char* buf;
+#ifdef HTTP_CUSTOM_HEADERS
+  auto int buflen;
+#endif
 
 #ifdef HTTP_VERBOSE
 	printf("HTTP: sending %d for %s, realm %s\n", code, state->url, state->realm);
 #endif
 
-	offset = 0;
+  buf = state->buffer;
 
    switch (code) {
    	default: msg = "OK"; code = 200; break;
@@ -2421,7 +2422,7 @@ void http_genHeader(HttpState* state, char * buf, int buflen,
    	content_type = "text/html";
    if (state->version != HTTP_VER_09) {
    	// 1.0 or 1.1: generate headers
-      offset += sprintf(buf + offset,
+      buf += sprintf(buf,
       	"HTTP/1.%c %d %s\r\n" \
          "Date: %ls\r\n" \
          "Server: Rabbit/%u.%02u\r\n" \
@@ -2435,28 +2436,31 @@ void http_genHeader(HttpState* state, char * buf, int buflen,
       if (code == 302)
       {
       	// Add "Location:" header for "302 Found" response
-			offset += sprintf(buf + offset, "Location: %ls\r\n", state->p);
+        buf += sprintf(buf, "Location: %s\r\n", state->p);
       }
       if (code != 204)
       {
-			// "204 No Content" response shouldn't include a Content-Type
-      	offset += sprintf(buf + offset, "Content-Type: %ls\r\n", content_type);
+        // "204 No Content" response shouldn't include a Content-Type
+      	buf += sprintf(buf, "Content-Type: %s\r\n", content_type);
       }
-      if (! more_hdrs)
+      if (!more_hdrs)
       {
       	// end headers with a blank line
-			offset += sprintf(buf + offset, "\r\n");
+        strcpy(buf, "\r\n");
+        buf += 2;
       }
 
 #ifdef HTTP_CUSTOM_HEADERS
-	   if (more_hdrs == 2)
-	         HTTP_CUSTOM_HEADERS(state, buf + strlen(buf),
-	                             buflen - strlen(buf) - 3);
+	   else if (more_hdrs == 2)
+     {
+        buflen = strlen(buf);
+	      HTTP_CUSTOM_HEADERS(state, buf + buflen, HTTP_MAXBUFFER - buflen - 3);
+     }
 #endif
    }
    // Add some content to display on the browser (this is the only thing for version 0.9)
    if (!more_hdrs && code != 200 && !content) {
-	   sprintf(buf+strlen(buf),
+      sprintf(buf+strlen(buf),
 	      "<HTML><HEAD><TITLE>%d %s</TITLE></HEAD>" \
 	      "<BODY>%d %s</BODY></HTML>"
         , code, msg
@@ -2479,8 +2483,7 @@ void http_send_404(HttpState* state);
 
 _http_nodebug void http_send_404(HttpState* state)
 {
-   http_genHeader(state, state->buffer, sizeof(state->buffer),
-                  404, NULL, 0, NULL);
+  http_genHeader(state, 404, NULL, 0, NULL);
 
 	state->offset=0;
 	state->length=strlen(state->buffer);
@@ -2499,8 +2502,7 @@ void http_send_403(HttpState* state);
 
 _http_nodebug void http_send_403(HttpState* state)
 {
-   http_genHeader(state, state->buffer, sizeof(state->buffer),
-                  403, NULL, 0, NULL);
+  http_genHeader(state, 403, NULL, 0, NULL);
 	state->offset=0;
 	state->length=strlen(state->buffer);
 	state->state=HTTP_FINISHWRITE;
@@ -2518,8 +2520,7 @@ void http_send_503(HttpState* state);
 
 _http_nodebug void http_send_503(HttpState* state)
 {
-   http_genHeader(state, state->buffer, sizeof(state->buffer),
-                  503, NULL, 0, NULL);
+  http_genHeader(state, 503, NULL, 0, NULL);
 	state->offset=0;
 	state->length=strlen(state->buffer);
 	state->state=HTTP_FINISHWRITE;
@@ -2601,8 +2602,7 @@ void http_send_401(HttpState* state);
 
 _http_nodebug void http_send_401(HttpState* state)
 {
-   http_genHeader(state, state->buffer, sizeof(state->buffer),
-                  401, NULL, 1, NULL);	// More headers follow
+   http_genHeader(state, 401, NULL, 1, NULL);	// More headers follow
 
 #if USE_HTTP_BASIC_AUTHENTICATION
 	if (state->auth_meth & HTTP_BASIC_AUTH) {
@@ -2963,7 +2963,7 @@ _http_nodebug int http_process(HttpState* state)
       state->headerlen = 0;   /* Flag for if the header has been sent */
       if (state->version != HTTP_VER_09) {
          /* Send the http/1.x header */
-      	http_genHeader(state, state->buffer, HTTP_MAXBUFFER,
+      	http_genHeader(state,
             200,	// 200 OK
             state->type->type ? state->type->type : "text/plain",
             2,			// Add custom headers
@@ -4954,8 +4954,7 @@ _http_nodebug int http_defaultCGI(HttpState * s)
       http_setCond(s, HTTP_DFLTUPLD_FILECOUNT, 0);	// No files as yet
       // Note: it is safe to use the getData buffer, since the first call to
       // the CGI will not have any incoming data in that buffer.
-	   http_genHeader(s, http_getData(s), HTTP_MAXBUFFER,
-                  200, NULL, 0,
+	   http_genHeader(s, 200, NULL, 0,
                   "<html><head><title>Upload status</title></head><body>");
       return CGI_SEND;	// Write string to client.
    }
@@ -6213,8 +6212,7 @@ _http_nodebug int cgi_redir_handler(HttpState* state)
 {
 	switch(state->nextstate) {
 	case CGI_STATE_TXT1:
-   	http_genHeader(state, state->buffer, sizeof(state->buffer),
-        302, NULL, 0, NULL);
+   	http_genHeader(state, 302, NULL, 0, NULL);
 		state->nextstate = CGI_STATE_TXT2;
 		break;
 
@@ -6273,8 +6271,7 @@ int cgi_nocontent_handler(HttpState* state)
 {
 	if (state->nextstate)
 	{
-      http_genHeader(state, state->buffer, sizeof(state->buffer),
-        204, NULL, 0, NULL);
+      http_genHeader(state, 204, NULL, 0, NULL);
       state->nextstate = 0;
 	   /* queue a write */
 	   state->headeroff = 0;
